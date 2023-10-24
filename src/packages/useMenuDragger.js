@@ -1,3 +1,5 @@
+import { evenets } from "./events";
+
 export function useMenuDragger ( containerRef, data ) {
     let currentComponent = null
     const dragenter = ( e ) => {
@@ -20,7 +22,9 @@ export function useMenuDragger ( containerRef, data ) {
                     left: e.offsetX,
                     zIndex: 1,
                     key: currentComponent.key,
-                    alignCenter: true // 当松手时 居中
+                    alignCenter: true, // 当松手时 居中
+                    props: {}, // 配置信息
+                    model: {}, // 
                 }
             ]
         }
@@ -32,6 +36,7 @@ export function useMenuDragger ( containerRef, data ) {
         containerRef.value.addEventListener('dragleave', dragleave)
         containerRef.value.addEventListener('drop', drop)
         currentComponent = component
+        evenets.emit('start') // 拖拽前发布订阅 start
     }
 
     const dragend = (e) => {
@@ -39,6 +44,7 @@ export function useMenuDragger ( containerRef, data ) {
         containerRef.value.removeEventListener('dragover', dragover)
         containerRef.value.removeEventListener('dragleave', dragleave)
         containerRef.value.removeEventListener('drop', drop)
+        evenets.emit('end') // 结束时发布订阅 end
     }
 
     return {

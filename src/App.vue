@@ -1,6 +1,6 @@
 <template>
   <div class="app">
-    <Editor v-model="state"></Editor>
+    <Editor v-model="state" :formData="formData"></Editor>
   </div>
 </template>
 
@@ -18,8 +18,14 @@ export default {
     const state = ref(data)
     provide('config', config)
 
+    const formData = ref({
+      username: 'vue3-lower',
+      password: '123'
+    })
+
     return {
-      state
+      state,
+      formData
     }
   }
 }

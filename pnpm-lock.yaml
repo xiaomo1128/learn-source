@@ -4,9 +4,15 @@ dependencies:
   core-js:
     specifier: ^3.8.3
     version: registry.npmmirror.com/core-js@3.33.0
+  deepcopy:
+    specifier: ^2.1.0
+    version: registry.npmmirror.com/deepcopy@2.1.0
   element-plus:
     specifier: ^2.3.14
     version: registry.npmmirror.com/element-plus@2.3.14(vue@3.3.4)
+  mitt:
+    specifier: ^3.0.1
+    version: registry.npmmirror.com/mitt@3.0.1
   vue:
     specifier: ^3.2.13
     version: registry.npmmirror.com/vue@3.3.4
@@ -4054,6 +4060,14 @@ packages:
       ms: registry.npmmirror.com/ms@2.1.2
     dev: true
 
+  registry.npmmirror.com/deepcopy@2.1.0:
+    resolution: {integrity: sha512-8cZeTb1ZKC3bdSCP6XOM1IsTczIO73fdqtwa2B0N15eAz7gmyhQo+mc5gnFuulsgN3vIQYmTgbmQVKalH1dKvQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/deepcopy/-/deepcopy-2.1.0.tgz}
+    name: deepcopy
+    version: 2.1.0
+    dependencies:
+      type-detect: registry.npmmirror.com/type-detect@4.0.8
+    dev: false
+
   registry.npmmirror.com/deepmerge@1.5.2:
     resolution: {integrity: sha512-95k0GDqvBjZavkuvzx/YqVLv/6YYa17fz6ILMSf7neqQITCPbnfEnQvEgMPNjH4kgobe7+WIL0yJEHku+H3qtQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/deepmerge/-/deepmerge-1.5.2.tgz}
     name: deepmerge
@@ -5788,6 +5802,12 @@ packages:
     dependencies:
       yallist: registry.npmmirror.com/yallist@4.0.0
     dev: true
+
+  registry.npmmirror.com/mitt@3.0.1:
+    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mitt/-/mitt-3.0.1.tgz}
+    name: mitt
+    version: 3.0.1
+    dev: false
 
   registry.npmmirror.com/mkdirp@0.5.6:
     resolution: {integrity: sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mkdirp/-/mkdirp-0.5.6.tgz}
@@ -7765,6 +7785,13 @@ packages:
     name: tslib
     version: 2.6.2
     dev: true
+
+  registry.npmmirror.com/type-detect@4.0.8:
+    resolution: {integrity: sha512-0fr/mIH1dlO+x7TlcMy+bIDqKPsw/70tVyeHW787goQjhmqaZe10uwLujubK9q9Lg6Fiho1KUKDYz0Z7k7g5/g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/type-detect/-/type-detect-4.0.8.tgz}
+    name: type-detect
+    version: 4.0.8
+    engines: {node: '>=4'}
+    dev: false
 
   registry.npmmirror.com/type-fest@0.6.0:
     resolution: {integrity: sha512-q+MB8nYR1KDLrgr4G5yemftpMC7/QLqVndBmEEdqzmNj5dcFOO4Oo8qlwZE3ULT3+Zim1F8Kq4cBnikNhlCMlg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/type-fest/-/type-fest-0.6.0.tgz}
