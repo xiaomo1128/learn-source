@@ -1,5 +1,5 @@
 import Range from "@/components/Range"
-import { ElButton, ElInput } from "element-plus"
+import { ElButton, ElInput, ElOption, ElSelect } from "element-plus"
 
 function createEditorConfig () {
     const componentList = []
@@ -20,6 +20,37 @@ export let registerConfig = createEditorConfig()
 const createInputProp = ( label ) => ({ type: 'input', label }) 
 const createColorProp = ( label ) => ({ type: 'color', label })
 const createSelectProp = ( label, options ) => ({ type: 'select', label, options })
+const createTableProp = ( label, table ) => ({ type: 'table', label, table})
+
+registerConfig.register({
+    label: '下拉框',
+    preview: () => ( <ElSelect modelValue=""></ElSelect>),
+    render: ({ props, model }) => {
+        return( <ElSelect {...model.default}>
+            {
+                (props.options || []).map( (item, index) => {
+                    return (
+                        <ElOption label={item.label} value={item.value} key={index}></ElOption>
+                    )
+                })
+            }
+        </ElSelect>)
+    },
+    key: 'select',
+    props: {
+        options: createTableProp( '下拉选项', {
+            options: [
+                { label: '显示值', field: 'label' },
+                { label: '绑定值', field: 'value' },
+            ],
+            key: 'label', // 显示给用户的值 是label值
+            
+        }),
+    },
+    model: {
+        default: '绑定字段'
+    }
+})
 
 registerConfig.register({
     label: '文本',
@@ -33,7 +64,7 @@ registerConfig.register({
             { label: '14px', value: '14px'},
             { label: '20px', value: '20px'},
             { label: '24px', value: '24px'},
-        ])
+        ]),
     }
 })
 registerConfig.register({
