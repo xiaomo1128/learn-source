@@ -20,7 +20,9 @@ export default {
 
     const formData = ref({
       username: 'vue3-lower',
-      password: '123'
+      password: '123',
+      start: 0,
+      end: 100,
     })
 
     return {
