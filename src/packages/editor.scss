@@ -162,3 +162,56 @@
         display: inline-flex;
     }
 }
+
+.block-resize {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: blue;
+    z-index: 999;
+    user-select: none; // 拖拽改变尺寸时 防止触发内部
+}
+
+.block-resize-top {
+    top: -4px;
+    left: calc(50% - 4px);
+}
+
+.block-resize-bottom {
+    bottom: -4px; 
+    left: calc(50% - 4px);
+}
+
+.block-resize-left {
+    top: calc(50% - 4px);
+    left: -4px;
+}
+
+.block-resize-right {
+    top: calc(50% - 4px);
+    right: -4px;
+}
+
+.block-resize-top-left {
+    top: -4px;
+    left: -4px;
+}
+
+.block-resize-top-right {
+    top: -4px;
+    right: -4px;
+}
+
+.block-resize-bottom-left {
+    bottom: -4px;
+    left: -4px;
+}
+
+.block-resize-bottom-right {
+    bottom: -4px;
+    right: -4px;
+}
+
+.el-button, .el-input {
+    transition: none;
+}
