@@ -1,13 +1,11 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { HeartCurve } from 'three/examples/jsm/curves/CurveExtras';
 import * as dat from 'dat.gui';
 
 const Page = () => {
   useEffect(() => {
     const $ = {
-      cameraIndex: 0,
       createScene () {
         const canvas = document.getElementById('c')
 
@@ -43,103 +41,60 @@ const Page = () => {
         })
         // 创建3D物体对象
         const mesh = new THREE.Mesh(geometry, material);
-        // const mesh1 = new THREE.Mesh(geometry, material);
-        mesh.geometry.computeBoundingBox();
 
-        // mesh1.position.set(-10, 0, 0);
-        this.scene.add(mesh,)
+        this.scene.add(mesh)
         this.mesh = mesh;
       },
       createCamera () {
-        const pCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 10)
-
-        pCamera.position.set(0, 0, 10)
-        pCamera.lookAt(this.scene.position)
-        this.scene.add(pCamera)
-        this.pCamera = pCamera;
-        this.camera = pCamera;
+        const size = 4;
+        // 创建正交相机
+        const orthoCamera = new THREE.OrthographicCamera(-size, size, size / 2, -size / 2, 0.1, 10);
+        // 相机位置
+        orthoCamera.position.set(2, 2, 3)
+        // 设置相机朝向
+        orthoCamera.lookAt(this.scene.position)
+        // 相机添加场景中
+        this.scene.add(orthoCamera)
+        this.orthoCamera = orthoCamera
+        // this.camera = orthoCamera
+        // console.log(orthoCamera);
 
         // 透视相机 第二个相机
-        const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000)
+        const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(2, 2, 20)
+        watcherCamera.position.set(2, 2, 6)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
+        this.scene.add(watcherCamera)
         this.watcherCamera = watcherCamera
         this.camera = watcherCamera
-        // this.scene.add(watcherCamera)
-      },
-      // 判断是否在视锥体内
-      frustumResult () {
-        // 通过camera计算视锥
-        const frustum = new THREE.Frustum()
-        // 更新以保证拿到最终结果
-        this.pCamera.updateProjectionMatrix()
-        frustum.setFromProjectionMatrix(
-          // 得到视锥体的矩阵
-          new THREE.Matrix4().multiplyMatrices(
-            this.pCamera.projectionMatrix,
-            this.pCamera.matrixWorldInverse,
-          )
-        )
-
-        const result = frustum.intersectsBox(this.mesh.geometry.boundingBox)
-      },
-      // 绘制心形
-      curveGenerator () {
-        const curve = new HeartCurve(1)
-        // 管道缓冲几何体
-        const tubeGeometry = new THREE.TubeGeometry(curve, 200, 0.01, 8, true)
-        const material = new THREE.MeshBasicMaterial({
-          color: 0x00ff00,
-        })
-        const tubeMesh = new THREE.Mesh(tubeGeometry, material)
-        // 绕xz轴旋转90度
-        tubeMesh.rotation.x = -Math.PI / 2
-
-        // 把曲线分割成3000段
-        this.points = curve.getPoints(3000)
-        this.scene.add(tubeMesh)
-        this.curve = curve;
-
-        // 球体
-        const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 64)
-        const sphereMaterial = new THREE.MeshBasicMaterial({
-          color: 0xffff00,
-        })
-        const sphereMesh = new THREE.Mesh(sphereGeometry, sphereMaterial)
-        // 球体位置
-        sphereMesh.position.copy(this.pCamera.position)
-        this.sphereMesh = sphereMesh;
-        
-        this.scene.add(sphereMesh);
       },
       datGui () {
-        const _this = this;
+        const _this = this
         const gui = new dat.GUI();
+
         const params = {
-          color: 0x1890ff,
           wireframe: false,
-          switchCamera() {
-            // 销毁旧的控制器
-            _this.orbitControls.dispose()
-            if ( _this.cameraIndex === 0 ) {
+          switchCamera () {
+            console.log(this.camera);
+            if (_this.camera.type === 'OrthographicCamera') {
+              // 透视相机
               _this.camera = _this.watcherCamera;
-              _this.cameraIndex = 1;
+              // 轨道控制器启用 消除切换之间的干扰
+              _this.orbitControls.enabled = true;
             } else {
-              _this.camera = _this.pCamera;
-              _this.cameraIndex = 0
+              _this.camera = _this.orthoCamera;
+              _this.orbitControls.enabled = false;
             }
-            _this.obtitControls = new OrbitControls(_this.camera, _this.canvas)
           },
         }
 
         gui.add(this.camera.position, 'x', 0.1, 100, 0.1).name('positionX')
+        gui.add(this.camera.rotation, 'x', 0.1, 100, 0.1).name('rotationX')
         gui.add(this.camera, 'near', 0.01, 10, 0.01).onChange(val => {
           this.camera.near = val
           this.camera.updateProjectionMatrix();
-          // this.frustumResult()
         })
         gui.add(this.camera, 'far', 1, 100, 1).onChange(val => {
           this.camera.far = val
@@ -154,22 +109,15 @@ const Page = () => {
         gui.add(params, 'wireframe').onChange(val => {
           this.mesh.material.wireframe = val;
         })
-        gui.add(this.camera, 'fov', 40, 150, 1).onChange(val => {
-          this.camera.fov = val;
-          this.camera.updateProjectionMatrix();
-        })
+        // 相机切换
         gui.add(params, 'switchCamera');
-        // 颜色
-        gui.addColor(params, 'color').onChange(val => {
-          _this.mesh.material.color.set(val)
-        })
       },
       // 添加辅助
       helpers () {
         // 创建辅助坐标系
         const axesHelper = new THREE.AxesHelper();
         // 相机辅助 观察正交相机
-        const cameraHelper = new THREE.CameraHelper(this.pCamera)
+        const cameraHelper = new THREE.CameraHelper(this.orthoCamera)
         this.cameraHelper = cameraHelper
         this.scene.add(axesHelper, cameraHelper)
       },
@@ -194,23 +142,10 @@ const Page = () => {
         orbitControls.enableDamping = true;
         this.orbitControls = orbitControls
       },
-      count: 0, // 当前点的索引
-      moveCamera () {
-        const index = this.count % this.points.length;
-        const point = this.points[index]
-        const nextPoint = this.points[index + 1 >= this.points.length ? 0 : index + 1]
-
-        this.pCamera.position.set(point.x, 0, -point.y)
-        // 让人眼视角沿着路径观察，即 曲线上的切线
-        this.pCamera.lookAt(nextPoint.x, 0, -nextPoint.y)
-        this.sphereMesh.position.set(point.x, 0, -point.y)
-        this.count++
-      },
       tick () {
-        // this.mesh.rotation.y += 0.01
+        this.mesh.rotation.y += 0.01
         // 更新
         this.orbitControls.update()
-        this.moveCamera()
         //相机辅助
         this.cameraHelper.update()
 
@@ -230,7 +165,6 @@ const Page = () => {
         this.createLights()
         this.createObjects()
         this.createCamera()
-        this.curveGenerator()
         this.helpers()
         this.render()
         this.controls()

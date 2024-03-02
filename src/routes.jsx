@@ -1,4 +1,4 @@
-const routeFiles = import.meta.globEager("/src/views/*.jsx");
+const routeFiles = import.meta.globEager("/src/views/index.jsx");
 const routes = [];
 
 for (const path in routeFiles) {
