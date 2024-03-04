@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
 import * as dat from 'dat.gui';
 
 const Page = () => {
@@ -31,74 +32,66 @@ const Page = () => {
 
         this.scene.add(ambientLight, directionalLight);
       },
-      // 纹理
-      loadTextures () {
-        // -----------------方法一
-        // const img = new Image()
-        // // 创建纹理
-        // const texture = new THREE.Texture(img)
-
-        // img.onload = function () {
-        //   console.log(texture);
-        //   // 更新纹理
-        //   texture.needsUpdate = true
-        // }
-        // img.src = '/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg';
-        // this.texture = texture;
-
-        // ------------------方法二
-        // setCrossOrigin('anonymous') 跨域方法
-        // const textLoader = new THREE.TextureLoader()
-        // this.texture =  textLoader.setCrossOrigin('anonymous').load(
-        //   // this.texture =  textLoader.load(
-        //   // 'https://3dbooks.netlify.app/assets/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg',
-        //   '/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg',
-        //   // onLoad回调
-        //   function (texture) {},
-        //   null,
-        //   // onError回调
-        //   (error) => {
-        //     console.log('error', error);
-        //   }
-        // )
-
-        // 方法三
-        const manager = new THREE.LoadingManager()
-        manager.onStart = function( url, itemsLoaded, itemsTotal) {
-          console.log( 'Start loading file: '+url +'.\nLoaded' + itemsLoaded+'of '+ itemsTotal+'files.');
-        }
-
-        manager.onLoad = function() {
-          console.log('Loading complete !');
-        }
-
-        manager.onProgress = function( url, itemsLoaded, itemsTotal ){
-          console.log('Loading file: '+ url+ '.\Loaded ' +itemsLoaded+ ' of '+itemsTotal+' files. ');
-        }
-
-        manager.onError = (url) =>{
-          console.log('There was an error loading '+ url);
-        }
-        
-        const textureLoader = new THREE.TextureLoader(manager)
-        const texture = textureLoader.load('/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg')
-
-        this.texture = texture
-      },
       // 创建立方体对象
       createObjects () {
-        // 创建立方体的几何体
-        const geometry = new THREE.CylinderGeometry(1, 1, 1)
+        // 创建几何体
+        const carGeometry = new THREE.BoxGeometry(2, 0.2, 1)
+
         // 创建立方体材质
         const material = new THREE.MeshLambertMaterial({
-          // color: 0x1890ff,
-          map: this.texture
+          color: 0x1890ff,
         })
         // 创建3D物体对象
-        const mesh = new THREE.Mesh(geometry, material);
+        const car = new THREE.Mesh(carGeometry, material);
 
-        this.scene.add(mesh)
-        this.mesh = mesh;
+        // 车轮
+        const wheelGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 10)
+        const wheelMaterial = new THREE.MeshBasicMaterial({
+          color: 0xff00ff,
+        })
+        const wheel1 = new THREE.Mesh(wheelGeometry, wheelMaterial)
+        const wheel2 = new THREE.Mesh(wheelGeometry, wheelMaterial)
+        const wheel3 = new THREE.Mesh(wheelGeometry, wheelMaterial)
+        const wheel4 = new THREE.Mesh(wheelGeometry, wheelMaterial)
+
+        wheel1.name = 'wheel'
+        wheel2.name = 'wheel'
+        wheel3.name = 'wheel'
+        wheel4.name = 'wheel'
+        wheel1.rotation.x = -Math.PI / 2;
+        wheel1.position.set(-0.5, 0, 0.4)
+        wheel2.rotation.x = -Math.PI / 2;
+        wheel2.position.set(-0.5, 0, -0.4)
+        wheel3.rotation.x = -Math.PI / 2;
+        wheel3.position.set(0.5, 0, -0.4)
+        wheel4.rotation.x = -Math.PI / 2;
+        wheel4.position.set(0.5, 0, 0.4)
+
+        // 车前小灯
+        const lightGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1)
+        const lightMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+        })
+        const light1 = new THREE.Mesh(lightGeometry, lightMaterial)
+        const light2 = new THREE.Mesh(lightGeometry, lightMaterial)
+        light1.position.set(-1.05, 0, 0.2)
+        light2.position.set(-1.05, 0, -0.2)
+
+        // 封装小车整体
+        const group = new THREE.Group()
+        group.add(car, wheel1, wheel2, wheel3, wheel4, light1, light2)
+        group.position.y = 0.2
+        this.group = group
+
+        // 合并几何体
+        const geometry = mergeBufferGeometries([
+          carGeometry, wheelGeometry
+        ])
+        const mesh = new THREE.Mesh(geometry, material)
+        mesh.position.y = -1;
+
+        this.scene.add(group, mesh)
+        this.mesh = car;
       },
       createCamera () {
         const size = 4;
@@ -117,7 +110,7 @@ const Page = () => {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(1, 2, 4)
+        watcherCamera.position.set(-2, 2, 4)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -129,12 +122,17 @@ const Page = () => {
         const _this = this
         const gui = new dat.GUI();
 
+        // 是否开启轨道控制器
+        gui.add(_this.orbitControls, 'enabled')
       },
       // 添加辅助
       helpers () {
         // 创建辅助坐标系
         const axesHelper = new THREE.AxesHelper();
-        this.scene.add(axesHelper, )
+        // 网格平面
+        const gridHelper = new THREE.GridHelper(30, 10, 0xcd37aa, 0x4a4a4a)
+
+        this.scene.add(axesHelper, gridHelper)
       },
       render () {
         // 创建渲染器
@@ -157,9 +155,32 @@ const Page = () => {
         orbitControls.enableDamping = true;
         this.orbitControls = orbitControls
       },
+      // 让车动起来
+      runCar () {
+        const { children } = this.group
+        // 车轮周长 / 360度 = 转速
+        // 转速 * 角度 = 角速度
+        const delta = 4; // 每帧车轮转动4度
+        const speed = ( 2 * Math.PI * 0.2) / 360 * delta;
+
+        for ( const i in children ) {
+          const mesh = children[i]
+          if (mesh.name === 'wheel') {
+            // 车轮转动的角度
+            mesh.rotation.y += THREE.MathUtils.radToDeg(delta);
+          }
+        }
+        // 行进速度
+        this.group.position.x -= speed;
+
+        if (this.group.position.x < -10) {
+          this.group.position.x = 10;
+        }
+      },
       tick () {
         // 更新
         this.orbitControls.update()
+        this.runCar()
 
         this.renderer.render(this.scene, this.camera)
         window.requestAnimationFrame(()=> this.tick())
@@ -175,7 +196,6 @@ const Page = () => {
       init () {
         this.createScene()
         this.createLights()
-        this.loadTextures()
         this.createObjects()
         this.createCamera()
         this.helpers()

@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { DragControls } from 'three/examples/jsm/controls/DragControls';
 import * as dat from 'dat.gui';
+import gsap from 'gsap';
 
 const Page = () => {
   useEffect(() => {
@@ -31,71 +33,19 @@ const Page = () => {
 
         this.scene.add(ambientLight, directionalLight);
       },
-      // 纹理
-      loadTextures () {
-        // -----------------方法一
-        // const img = new Image()
-        // // 创建纹理
-        // const texture = new THREE.Texture(img)
-
-        // img.onload = function () {
-        //   console.log(texture);
-        //   // 更新纹理
-        //   texture.needsUpdate = true
-        // }
-        // img.src = '/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg';
-        // this.texture = texture;
-
-        // ------------------方法二
-        // setCrossOrigin('anonymous') 跨域方法
-        // const textLoader = new THREE.TextureLoader()
-        // this.texture =  textLoader.setCrossOrigin('anonymous').load(
-        //   // this.texture =  textLoader.load(
-        //   // 'https://3dbooks.netlify.app/assets/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg',
-        //   '/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg',
-        //   // onLoad回调
-        //   function (texture) {},
-        //   null,
-        //   // onError回调
-        //   (error) => {
-        //     console.log('error', error);
-        //   }
-        // )
-
-        // 方法三
-        const manager = new THREE.LoadingManager()
-        manager.onStart = function( url, itemsLoaded, itemsTotal) {
-          console.log( 'Start loading file: '+url +'.\nLoaded' + itemsLoaded+'of '+ itemsTotal+'files.');
-        }
-
-        manager.onLoad = function() {
-          console.log('Loading complete !');
-        }
-
-        manager.onProgress = function( url, itemsLoaded, itemsTotal ){
-          console.log('Loading file: '+ url+ '.\Loaded ' +itemsLoaded+ ' of '+itemsTotal+' files. ');
-        }
-
-        manager.onError = (url) =>{
-          console.log('There was an error loading '+ url);
-        }
-        
-        const textureLoader = new THREE.TextureLoader(manager)
-        const texture = textureLoader.load('/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg')
-
-        this.texture = texture
-      },
       // 创建立方体对象
       createObjects () {
-        // 创建立方体的几何体
-        const geometry = new THREE.CylinderGeometry(1, 1, 1)
+        // 创建几何体
+        // const geometry = new THREE.BoxGeometry(1, 1, 1)
+        // 球体
+        const sphereGeometry = new THREE.SphereGeometry(1, 16, 16)
+
         // 创建立方体材质
         const material = new THREE.MeshLambertMaterial({
-          // color: 0x1890ff,
-          map: this.texture
+          color: 0x1890ff,
         })
         // 创建3D物体对象
-        const mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(sphereGeometry, material);
 
         this.scene.add(mesh)
         this.mesh = mesh;
@@ -117,7 +67,7 @@ const Page = () => {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(1, 2, 4)
+        watcherCamera.position.set(2, 2, 6)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -128,13 +78,63 @@ const Page = () => {
       datGui () {
         const _this = this
         const gui = new dat.GUI();
+        const params = {
+          widthSegments: _this.mesh.geometry.parameters.widthSegments, 
+          heightSegments: _this.mesh.geometry.parameters.heightSegments, 
+          generateGeometry () {
+            // 删除旧的球体
+            _this.mesh.geometry.dispose()
+            // 生成新的球体
+            const geometry = new THREE.SphereGeometry(1, params.widthSegments, params.heightSegments)
 
+            _this.mesh.geometry = geometry
+          },
+          // 旋转
+          rotation () {
+            // _this.mesh.rotation.x += 30
+            // 添加动画效果
+            gsap.to(_this.mesh.rotation, { duration: 1, delay: 0, x: _this.mesh.rotation.x + Math.PI })
+          },
+          x: 0,
+        }
+
+        // 是否开启轨道控制器
+        gui.add(_this.orbitControls, 'enabled')
+        // mesh的可见
+        gui.add(_this.mesh, 'visible')
+        // 物体的线框
+        gui.add(_this.mesh.material, 'wireframe')
+
+        // 调试球体
+        gui.add(params, 'widthSegments', 3, 100, 1).onChange(val => {
+          params.widthSegments = val
+          params.generateGeometry()
+        })
+        gui.add(params, 'heightSegments', 3, 100, 1).onChange(val => {
+          params.heightSegments = val
+          params.generateGeometry()
+        })
+        // 球体旋转
+        gui.add(params, 'rotation')
+        // 球体位移
+        gui.add(_this.mesh.position, 'x', -3, 3, 0.1)
+        gui.add(params, 'x', -3, 3, 0.1).name('translateX').onChange(val => {
+          params.x = val;
+          _this.mesh.geometry.translate(params.x, 0, 0)
+          console.log(_this.mesh.position);
+          console.log(_this.mesh.geometry);
+        })
+        // 球体缩放
+        gui.add(_this.mesh.scale, 'x', 1, 3, 0.1).name('scaleX')
       },
       // 添加辅助
       helpers () {
         // 创建辅助坐标系
         const axesHelper = new THREE.AxesHelper();
-        this.scene.add(axesHelper, )
+        // 相机辅助 观察正交相机
+        const cameraHelper = new THREE.CameraHelper(this.orthoCamera)
+        this.cameraHelper = cameraHelper
+        this.scene.add(axesHelper, cameraHelper)
       },
       render () {
         // 创建渲染器
@@ -153,13 +153,20 @@ const Page = () => {
       controls () {
         // 创建轨道控制器
         const orbitControls = new OrbitControls(this.camera, this.canvas)
+
+        const dragControls = new DragControls([this.mesh], this.camera, this.canvas)
+
+        orbitControls.enabled = false
         // 开启惯性
         orbitControls.enableDamping = true;
         this.orbitControls = orbitControls
+        this.dragControls = dragControls
       },
       tick () {
         // 更新
         this.orbitControls.update()
+        //相机辅助
+        this.cameraHelper.update()
 
         this.renderer.render(this.scene, this.camera)
         window.requestAnimationFrame(()=> this.tick())
@@ -175,7 +182,6 @@ const Page = () => {
       init () {
         this.createScene()
         this.createLights()
-        this.loadTextures()
         this.createObjects()
         this.createCamera()
         this.helpers()
