@@ -26,11 +26,8 @@ const Page = () => {
       // 创建光照
       createLights () {
         // 添加全局光照
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7)
-
-        // 改变光照方向
-        directionalLight.position.set(1, 2, 4)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
 
         this.scene.add(ambientLight, directionalLight);
       },
@@ -65,7 +62,7 @@ const Page = () => {
         //   }
         // )
 
-        // --------------------方法三
+        // 方法三
         const manager = new THREE.LoadingManager()
         manager.onStart = function( url, itemsLoaded, itemsTotal) {
           console.log( 'Start loading file: '+url +'.\nLoaded' + itemsLoaded+'of '+ itemsTotal+'files.');
@@ -84,29 +81,21 @@ const Page = () => {
         }
         
         const textureLoader = new THREE.TextureLoader(manager)
-        this.textureLoader = textureLoader
+        const texture = textureLoader.load('/src/assets/textures/Wood_Ceiling_Coffers_003_basecolor.Cu38ry6v.jpg')
+
+        this.texture = texture
       },
       // 创建立方体对象
       createObjects () {
-        // 加载纹理
-        const colorTexture = this.textureLoader.load('/src/assets/textures/7.jpg') // 颜色纹理
-        const roughness = this.textureLoader.load('/src/assets/textures/6.jpg') // 光滑度贴图
-        const metalTexture = this.textureLoader.load('/src/assets/textures/5.jpg') // 金属贴图
-        
-        colorTexture.repeat.set(2, 2) // 纹理回环 
-        // RepeatWrapping 阵列  ClampToEdgeWrapping 默认值  MirroredRepeatWrapping 镜像
-        colorTexture.wrapS = THREE.RepeatWrapping // 水平方向上的纹理效果
-        colorTexture.wrapT = THREE.RepeatWrapping // 垂直方向上的纹理效果
-        colorTexture.offset = new THREE.Vector2(0.5, 0.5) // 纹理偏移
-        colorTexture.rotation = Math.PI / 12 // 旋转 正值=逆时针  负值=顺时针
-        colorTexture.center.set(0.5, 0.5) // 设置纹理的旋转中心，默认(0,0), (0.5, 0.5)是纹理的中心
-        this.colorTexture = colorTexture
-
         // 创建立方体的几何体
-        const geometry = new THREE.BoxGeometry(2, 2, 2)
+        const geometry = new THREE.CylinderGeometry(1, 1, 1)
         // 创建立方体材质
-        const material = new THREE.MeshStandardMaterial({
-          map: colorTexture,
+        const material = new THREE.MeshLambertMaterial({
+          color: 0x1890ff,
+          map: this.texture,
+          transparent: true, //开启透明度
+          opacity: 0.8,
+          wireframe: true,
         })
         // 创建3D物体对象
         const mesh = new THREE.Mesh(geometry, material);
@@ -114,20 +103,15 @@ const Page = () => {
 
         // 立方体
         const boxGeometry = new THREE.BoxGeometry(2, 2, 2)
-        const boxMaterial = new THREE.MeshStandardMaterial({
-          map: colorTexture,
-          roughnessMap: roughness,
-          roughness: 0.6,
-          metalnessMap: metalTexture,
-          metalness: 0.2,
+        const boxMaterial = new THREE.MeshBasicMaterial({
+          map: this.texture,
         })
-
         const box = new THREE.Mesh(boxGeometry, boxMaterial)
-        box.position.x = 2;
+
+        box.position.x = 1;
 
         this.scene.add(mesh, box)
         this.mesh = mesh;
-        this.box = box
       },
       createCamera () {
         const size = 4;
@@ -146,7 +130,7 @@ const Page = () => {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(0, 0, 4)
+        watcherCamera.position.set(1, 2, 4)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -158,30 +142,6 @@ const Page = () => {
         const _this = this
         const gui = new dat.GUI();
 
-        gui.add(_this.colorTexture.repeat, 'x', 0, 10, 0.1).name('repeatX')
-        gui.add(_this.colorTexture.repeat, 'y', 0, 10, 0.1).name('repeatY')
-        gui.add(_this.colorTexture, 'wrapS', {
-          ClampToEdgeWrapping: 'ClampToEdgeWrapping',
-          RepeatWrapping: 'RepeatWrapping',
-          MirroredRepeatWrapping: 'MirroredRepeatWrapping',
-        }).onChange(val => {
-          _this.colorTexture.wrapS = THREE[val]
-          _this.colorTexture.needsUpdate = true
-        })
-
-        gui.add(_this.colorTexture, 'wrapT', {
-          ClampToEdgeWrapping: 'ClampToEdgeWrapping',
-          RepeatWrapping: 'RepeatWrapping',
-          MirroredRepeatWrapping: 'MirroredRepeatWrapping',
-        }).onChange( val => {
-          _this.colorTexture.wrapT = THREE[val]
-          _this.colorTexture.needsUpdate = true
-        })
-
-        gui.add(_this.colorTexture.offset, 'x', 0, 1, 0.1).name('offsetX')
-        gui.add(_this.colorTexture.offset, 'y', 0, 1, 0.1).name('offsetY')
-        gui.add(_this.colorTexture.center, 'x', 0, 1, 0.1).name('centerX')
-        gui.add(_this.colorTexture.center, 'y', 0, 1, 0.1).name('centerY')
       },
       // 添加辅助
       helpers () {
