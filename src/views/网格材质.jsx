@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as dat from 'dat.gui';
 
@@ -22,7 +21,6 @@ const Page = () => {
 
         // 创建3D场景对象
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0)
         this.scene = scene
       },
       // 创建光照
@@ -32,13 +30,7 @@ const Page = () => {
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7)
 
         // 改变光照方向
-        directionalLight.position.set(1, 2, 2)
-        directionalLight.castShadow = true 
-        directionalLight.shadow.camera.near = 0.1
-        directionalLight.shadow.camera.far = 40
-        directionalLight.shadow.radius = 1.5 // 越小越清晰
-        directionalLight.shadow.mapSize.x = 1024; // mapSize 影响阴影模糊，越大越清晰
-        directionalLight.shadow.mapSize.y = 1024
+        directionalLight.position.set(1, 2, 4)
 
         this.scene.add(ambientLight, directionalLight);
         this.directionalLight = directionalLight
@@ -97,61 +89,28 @@ const Page = () => {
       },
       // 创建立方体对象
       createObjects () {
-        // 阴影材质特性：只有在有阴影的地方，才不是透明的，其他全是透明的
-        // 生成阴影机制： 1. 物体castShadow属性产生阴影 2. 平面receiveShadow属性接收阴影（默认不开启） 3. 让平行光照castShadow属性产生阴影 4. render中开启shadowMap属性
-        const floorTexture = this.textureLoader.load('/src/assets/textures/6.jpg')
-        const wallTexture = this.textureLoader.load('/src/assets/textures/2.jpg')
+        const colorTexture = this.textureLoader.load('/src/assets/textures/1.jpg')
+        const normalTexture = this.textureLoader.load('/src/assets/textures/4.jpg')
 
-        this.floorTexture = floorTexture
-        this.wallTexture = wallTexture
+        const material = new THREE.MeshPhongMaterial({
+          transparent: true,
+          side: THREE.DoubleSide,
+          map: colorTexture
+        })
+        const box = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), material) // 球体
+        const meshMaterial = new THREE.MeshPhongMaterial({
+          map: colorTexture,
+          // normalMap: normalTexture,
+          specular: 0x00ffff, // 高光颜色
+        })
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), meshMaterial) // 球体
 
-        // 在展示阴影中，两个平面会重叠
-        const material = new THREE.ShadowMaterial({
-          opacity: 1,
-          polygonOffset: true, // 开启多边形偏移
-          polygonOffsetFactor: -1,// 多边形偏移系数，默认值是0
-        }) 
+        box.position.x = -1.5
+        mesh.position.x = 1
 
-        const box = new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshBasicMaterial({
-            color: 0x1890ff,
-          })
-        )
-
-        // 平面阴影
-        const planeShadow = new THREE.Mesh(
-          new THREE.PlaneGeometry(10, 10),
-          material
-        )
-        // 地板
-        const floor = new THREE.Mesh(
-          new THREE.PlaneGeometry(10, 10),
-          new THREE.MeshBasicMaterial({
-            map: floorTexture,
-          })
-        )
-
-        // 墙面阴影
-        const wallShadow = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), material)
-        // 墙面
-        const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({
-          map: wallTexture,
-        }) )
-
-        planeShadow.rotation.x = -Math.PI / 2
-        planeShadow.position.y = -0.8
-        floor.rotation.x = -Math.PI / 2
-        floor.position.y = -0.8
-        floor.position.z = -2
-        wallShadow.position.y = 4
-        wallShadow.position.z = -2
-        wall.position.z = -2
-        box.castShadow = true // 产生阴影
-        wallShadow.receiveShadow = true // 墙面接收阴影
-        planeShadow.receiveShadow = true // 平面接收阴影
-
-        this.scene.add(box, planeShadow, floor, wallShadow, wall)
+        this.meshMaterial = meshMaterial
+        this.material = material
+        this.scene.add(box, mesh)
       },
       createCamera () {
         const size = 4;
@@ -170,7 +129,7 @@ const Page = () => {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(0, 2, 4)
+        watcherCamera.position.set(0, 1, 6)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -181,7 +140,9 @@ const Page = () => {
       datGui () {
         const _this = this
         const gui = new dat.GUI();
-
+        
+        gui.add(_this.meshMaterial, 'shininess', 0, 10, 0.1) // 光照强度
+        // 光照方位
         gui.add(_this.directionalLight.position, 'x', -10, 10, 0.1)
         gui.add(_this.directionalLight.position, 'y', -10, 10, 0.1)
         gui.add(_this.directionalLight.position, 'z', -10, 10, 0.1)
@@ -190,11 +151,7 @@ const Page = () => {
       helpers () {
         // 创建辅助坐标系
         const axesHelper = new THREE.AxesHelper();
-
-        const gridHelper = new THREE.GridHelper(20, 20, 0xf0f0f0)
-        gridHelper.position.y = -1
-        
-        this.scene.add(axesHelper, gridHelper)
+        this.scene.add(axesHelper, )
       },
       render () {
         // 创建渲染器
@@ -202,7 +159,6 @@ const Page = () => {
           canvas: this.canvas,
           antialias: true
         })
-        renderer.shadowMap.enabled = true;
         // 设置渲染器屏幕像素比 移动端解决像素问题
         renderer.setPixelRatio(window.devicePixelRatio || 1)
         // 设置渲染器大小
@@ -252,6 +208,7 @@ const Page = () => {
   }, []);
 
   return <>
+    start your project
     <canvas id="c" />;
   </>
 };
