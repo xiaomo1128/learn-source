@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
-import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib'
-import { RectAreaLightHelper } from 'three/examples/jsm/helpers/RectAreaLightHelper'
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as dat from 'dat.gui';
 
@@ -29,26 +28,53 @@ const Page = () => {
       // 创建光照
       createLights () {
         // 添加全局光照
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
-        ambientLight.visible = false
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.95)
+        ambientLight.visible = false // 关闭
 
-        // 添加聚光灯
-        const spotLight = new THREE.SpotLight(0xff00ff, 0.95)
-        const spotHelper = new THREE.SpotLightHelper(spotLight) 
+        // 方向光
+        const dirLight = new THREE.DirectionalLight(0xffffaa, 0.95)
+        dirLight.position.set(0, 3, 1.5)
+        dirLight.castShadow = true // 让方向光产生阴影
+        dirLight.visible = false // 关闭
 
-        spotLight.intensity = 1
-        spotLight.distance = 100 // 光源距离
-        spotLight.angle = Math.PI / 4 // 照射角度
-        spotLight.penumbra = 0.3 // 半影：阴影边缘模糊度
-        spotLight.position.y = 10
-        spotLight.castShadow = true // 开启阴影
+        // 方向光辅助工具
+        const dirHelper = new THREE.DirectionalLightHelper(dirLight, 3)
 
-        spotHelper.update() // 更新
+        // 点光源
+        const pointLight1 = new THREE.PointLight(0xf3ae3d, 0.8)
+        const pointLight2 = new THREE.PointLight(0xa1fc8f, 0.8)
 
-        this.scene.add(ambientLight, spotLight, spotHelper );
+        // 光源位置默认在原点
+        pointLight1.position.set(-1, 1, 2)
+        pointLight2.position.set(1, 1, 2)
+        // 开启阴影
+        pointLight1.castShadow = true
+        pointLight2.castShadow = true
+
+        // 创建小球标示光源位置
+        const sphere1 = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05, 64, 64),
+          new THREE.MeshBasicMaterial({
+            color: 0xf3ae3d,
+          })
+        );
+        const sphere2 = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05, 64, 64),
+          new THREE.MeshBasicMaterial({
+            color: 0xa1fc8f,
+          })
+        );
+        sphere1.position.copy(pointLight1.position)
+        sphere2.position.copy(pointLight2.position)
+        
+        this.scene.add(ambientLight, dirLight, dirHelper,sphere1, sphere2, pointLight1, pointLight2, )
         this.ambientLight = ambientLight
-        this.spotLight = spotLight
-        this.spotHelper = spotHelper
+        this.dirLight = dirLight
+        this.dirHelper = dirHelper
+        this.pointLight1 = pointLight1
+        this.pointLight2 = pointLight2
+        this.sphere1 = sphere1
+        this.sphere2 = sphere2
       },
       // 纹理
       loadTextures () {
@@ -105,41 +131,29 @@ const Page = () => {
       // 创建立方体对象
       createObjects () {
         const box = new THREE.Mesh(
-          new THREE.SphereGeometry(2, 64, 64),
+          new THREE.BoxGeometry(1, 1, 1),
           new THREE.MeshLambertMaterial({
             color: 0x1890ff
           })
         )
-        
-        const geometry = new THREE.PlaneGeometry(1000, 1000)
-        const floor = new THREE.Mesh(
-          geometry, 
-          new THREE.MeshLambertMaterial({
-            color: 0x666666, 
-            // side: THREE.DoubleSide,
-          })
-        )
-
-        const sky = new THREE.Mesh(
-          geometry, 
-          new THREE.MeshLambertMaterial({
-            color: 0x666666, 
-            side: THREE.DoubleSide,
-          })
-        )
-        sky.rotation.x = -Math.PI / 2
-        sky.position.y = 60
-        sky.castShadow = true
+        const geometry = new THREE.PlaneGeometry(10000, 10000)
+        const material = new THREE.MeshLambertMaterial({
+          side: THREE.DoubleSide
+        })
+        const floor = new THREE.Mesh(geometry, material)
+        const wall = new THREE.Mesh(geometry, material)
 
         floor.rotation.x = -Math.PI / 2
         floor.position.y = -1
-        box.position.y = 3
+        wall.position.y = 4
+        wall.position.z = -5
 
-        box.castShadow = true // 开启阴影
-        floor.receiveShadow = true // 接收阴影
-        this.spotLight.target = box // 聚光灯始终朝向物体
+        this.dirLight.target = box // 方向光照向物体
+        box.castShadow = true // 物体产生阴影
+        floor.receiveShadow = true // 地面接收阴影
+        wall.receiveShadow = true // 墙面接收阴影
 
-        this.scene.add(box, floor, sky)
+        this.scene.add(box, floor, wall)
         this.box = box
       },
       createCamera () {
@@ -157,9 +171,9 @@ const Page = () => {
         // console.log(orthoCamera);
 
         // 透视相机 第二个相机
-        const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000)
+        const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 100)
         // 设置相机位置
-        watcherCamera.position.set(-4, 15, 15)
+        watcherCamera.position.set(-4, 2, 6)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -172,52 +186,59 @@ const Page = () => {
         const gui = new dat.GUI();
 
         const ambientFolder = gui.addFolder('环境光')
-        ambientFolder.add(_this.ambientLight, 'intensity', 0, 1, 0.1).name('强度')
-        ambientFolder.add(_this.ambientLight, 'visible').name('可见性')
+        ambientFolder.add(_this.ambientLight, 'intensity', 0, 1, 0.1).name('环境光强度')
+        ambientFolder.add(_this.ambientLight, 'visible').name('环境光可见性')
+        ambientFolder.addColor({ color: 0xffffff }, 'color').onChange(val =>{
+          _this.ambientLight.color = new THREE.Color(val)
+        })
+        // ambientFolder.open()
+
+        const dirLightFolder = gui.addFolder('方向光')
+        dirLightFolder.add(_this.dirLight, 'intensity',  0, 1, 0.1)
+        dirLightFolder.add(_this.dirLight, 'visible')
+        dirLightFolder.add(_this.dirLight.position, 'x', -20, 20, 0.1)
+        dirLightFolder.add(_this.dirLight.position, 'y', -20, 20, 0.1)
+        dirLightFolder.add(_this.dirLight.position, 'z', -20, 20, 0.1)
+        // dirLightFolder.open()
 
         const boxFolder = gui.addFolder('box')
-        boxFolder.add(_this.box.position, 'x', -30, 30, 0.1).onChange(val =>{
-          _this.spotHelper.update()
+        boxFolder.add(_this.box.position, 'x', -20, 20, 0.1).onChange(val =>{
+          _this.dirHelper.update()
         })
+        boxFolder.add(_this.box.position, 'y', -20, 20, 0.1).onChange(val =>{
+          _this.dirHelper.update()
+        })
+        boxFolder.add(_this.box.position, 'z', -20, 20, 0.1).onChange(val =>{
+          _this.dirHelper.update()
+        })
+        boxFolder.open()
 
-        const spotFolder = gui.addFolder('聚光灯')
-        spotFolder.add(_this.spotLight, 'intensity', 0, 1, 0.1).name('强度')
-        spotFolder.add(_this.spotLight, 'visible').name('可见性')
-        spotFolder.add(_this.spotLight, 'distance', 0, 100, 1).name('距离').onChange(val =>{
-          _this.spotHelper.update()
+        const pointsFolder = gui.addFolder('点光源')
+        pointsFolder.add(_this.pointLight1, 'intensity', 0, 1, 0.1).name('P1光照强度')
+        pointsFolder.add(_this.pointLight1, 'distance', 0, 20, 0.1).name('P1照射距离')
+        pointsFolder.add(_this.pointLight1, 'decay', 0, 20, 0.1).name('P1衰减率')
+        pointsFolder.add(_this.pointLight1.position, 'x', -20, 20, 0.1).onChange(val => {
+          _this.sphere1.position.x = val
         })
-        spotFolder.add(_this.spotLight, 'angle', 0, Math.PI / 2, 0.1).name('角度').onChange(val =>{
-          _this.spotHelper.update()
+        pointsFolder.add(_this.pointLight1.position, 'y', -20, 20, 0.1).onChange(val => {
+          _this.sphere1.position.y = val
         })
-        spotFolder.add(_this.spotLight, 'penumbra', 0, 1, 0.1).name('半影').onChange(val =>{
-          _this.spotHelper.update()
+        pointsFolder.add(_this.pointLight1.position, 'z', -20, 20, 0.1).onChange(val => {
+          _this.sphere1.position.z = val
         })
-        spotFolder.add(_this.spotLight, 'decay', 0, 10, 0.1).name('衰减量').onChange(val =>{
-          _this.spotHelper.update()
+        pointsFolder.add(_this.pointLight2, 'intensity', 0, 1, 0.1).name('P2光照强度')
+        pointsFolder.add(_this.pointLight2, 'distance', 0, 20, 0.1).name('P2照射距离')
+        pointsFolder.add(_this.pointLight2, 'decay', 0, 20, 0.1).name('P2衰减率')
+        pointsFolder.add(_this.pointLight2.position, 'x', -20, 20, 0.1).onChange(val => {
+          _this.sphere2.position.x = val
         })
-        spotFolder.add(_this.spotLight, 'power', 0, 30, 0.1).name('光功率').onChange(val =>{
-          _this.spotHelper.update()
+        pointsFolder.add(_this.pointLight2.position, 'y', -20, 20, 0.1).onChange(val => {
+          _this.sphere2.position.y = val
         })
-        spotFolder.add(_this.spotLight.position, 'x', -30, 30, 0.1).onChange(val =>{
-          _this.spotHelper.update()
+        pointsFolder.add(_this.pointLight2.position, 'z', -20, 20, 0.1).onChange(val => {
+          _this.sphere2.position.z = val
         })
-        spotFolder.add(_this.spotLight.position, 'y', -30, 30, 0.1).onChange(val =>{
-          _this.spotHelper.update()
-        })
-        spotFolder.add(_this.spotLight.position, 'z', -30, 30, 0.1).onChange(val =>{
-          _this.spotHelper.update()
-        })
-
-        spotFolder.add(_this.spotLight, 'castShadow').name('阴影')
-        spotFolder.add(_this.spotLight.shadow, 'radius', 0, 5, 0.01).name('阴影半径')
-        const params = {
-          near: _this.spotLight.shadow.camera.near,
-          far: _this.spotLight.shadow.camera.far,
-          fov: _this.spotLight.shadow.camera.fov,
-        }
-        spotFolder.add(params, 'near', 0.01, 10, 0.01).name('阴影相机near')
-        spotFolder.add(params, 'far', 0.01, 10, 0.01).name('阴影相机far')
-        this.params = params
+        pointsFolder.open()
       },
       // 添加辅助
       helpers () {
@@ -226,11 +247,8 @@ const Page = () => {
 
         const gridHelper = new THREE.GridHelper(20, 20, 0xf0f0f0)
         gridHelper.position.y = -1
-
-        const cameraHelper = new THREE.CameraHelper(this.spotLight.shadow.camera)
         
-        this.scene.add(axesHelper, gridHelper, cameraHelper)
-        this.cameraHelper = cameraHelper
+        this.scene.add(axesHelper, gridHelper)
       },
       render () {
         // 创建渲染器
@@ -239,8 +257,6 @@ const Page = () => {
           antialias: true
         })
         renderer.shadowMap.enabled = true;
-        renderer.outputEncoding = THREE.sRGBEncoding 
-
         // 设置渲染器屏幕像素比 移动端解决像素问题
         renderer.setPixelRatio(window.devicePixelRatio || 1)
         // 设置渲染器大小
@@ -258,18 +274,11 @@ const Page = () => {
       },
       clock: new THREE.Clock(),
       tick () {
-        const _this = this
+        // 让点光源运动
         const elapsedTime = this.clock.getElapsedTime()
-
-        _this.box.position.x = Math.sin(elapsedTime) * 10
-        _this.box.position.z = Math.cos(elapsedTime) * 4
-        _this.spotLight.position.x = Math.sin(elapsedTime) * 10
-        _this.spotLight.position.y = Math.sin(elapsedTime) * 2 + 10
-        _this.spotLight.position.z = Math.sin(elapsedTime) * 2
-        _this.spotLight.shadow.camera.near = _this.params.near
-        _this.spotLight.shadow.camera.far = _this.params.far
-        _this.spotLight.shadow.camera.fov = _this.params.fov
-        this.cameraHelper.update()
+        this.pointLight1.position.x = Math.sin(elapsedTime)
+        this.pointLight1.position.z = Math.cos(elapsedTime)
+        this.sphere1.position.copy(this.pointLight1.position)
 
         // 更新
         this.orbitControls.update()
@@ -294,9 +303,9 @@ const Page = () => {
         this.helpers()
         this.render()
         this.controls()
-        this.datGui()
         this.tick()
         this.fitView()
+        this.datGui()
       }
     }
 
