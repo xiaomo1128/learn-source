@@ -580,10 +580,10 @@
   dependencies:
     "has-flag" "^3.0.0"
 
-"three@^0.151.3":
-  "integrity" "sha512-+vbuqxFy8kzLeO5MgpBHUvP/EAiecaDwDuOPPDe6SbrZr96kccF0ktLngXc7xA7bzyd3N0t2f6mw3Z9y6JCojQ=="
-  "resolved" "https://registry.npmmirror.com/three/-/three-0.151.3.tgz"
-  "version" "0.151.3"
+"three@^0.160.0":
+  "integrity" "sha512-DLU8lc0zNIPkM7rH5/e1Ks1Z8tWCGRq6g8mPowdDJpw1CFBJMU7UoJjC6PefXW7z//SSl0b2+GCw14LB+uDhng=="
+  "resolved" "https://registry.npmmirror.com/three/-/three-0.160.0.tgz"
+  "version" "0.160.0"
 
 "to-fast-properties@^2.0.0":
   "integrity" "sha512-/OaKK0xYrs3DmxRYqL/yDc+FxFUVYhDlXMhRmv3z915w2HF1tnN1omB354j8VUGO/hbRzyD6Y3sA7v7GS/ceog=="
