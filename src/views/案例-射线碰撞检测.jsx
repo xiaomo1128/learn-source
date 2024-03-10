@@ -43,7 +43,6 @@ const Page = () => {
           })
         )
         box.position.y = 1;
-        box.rotation.y = Math.PI / 4;
 
         const cube = new THREE.Mesh(
           new THREE.BoxGeometry(4, 4, 4),
@@ -131,19 +130,43 @@ const Page = () => {
       pointer: new THREE.Vector2(-1000, -1000), // 参数给大，防止自动触发Raycaster射线
       flag: false, // 是否碰撞
       speedX: 0.05, // 运动速度
-      box3: new THREE.Box3(), // 包围盒
       tick () {
-        this.box.geometry.computeBoundingBox()
-        // 包围盒复制 物体在世界坐标变更后的位置
-        this.box3.copy(this.box.geometry.boundingBox).applyMatrix4(this.box.matrixWorld) 
+        // 网格中心
+        const centerCoord = this.box.position.clone() // clone方法不会影响原物体本身
+        // 顶点坐标
+        const { position } = this.box.geometry.attributes;
+        // 转换成顶点的三维坐标，position转为顶点向量
+        const vertices = []
 
-        // 包围盒辅助线
-        const boxHelper = new THREE.Box3Helper(this.box3, 0xff00ff)
+        for (let i = 0; i < position.count; i++) {
+          vertices.push(new THREE.Vector3(position.getX(i), position.getY(i), position.getZ(i)))
+        }
 
-        const cubeB = new THREE.Box3().setFromObject(this.cube)
+        // 四阶矩阵作用；物体在世界坐标中，会进行旋转、位移等，使用四阶矩阵后，可获取到网格在世界坐标下变化后的新坐标
+        for (let i = 0; i < vertices.length; i++) {
+          // 向量 = 获取网格在应用变换后的世界坐标
+          const worldCoord = vertices[i].clone().applyMatrix4(this.box.matrixWorld)
 
-        if (this.box3.intersectsBox(cubeB)) {
-          this.flag = true
+          // 距离 = 获取由中心->顶点的向量
+          const dir = worldCoord.clone().sub(centerCoord)
+
+          // 发起射线
+          const raycaster = new THREE.Raycaster(centerCoord, dir.clone().normalize())
+
+          // 判断该射线，是否与物体相交，获取交互物体
+          const intersects = raycaster.intersectObjects([this.cube], true)
+          if ( intersects.length ) {
+            const cube = intersects[0].object
+
+            if ( intersects[0].distance <= dir.length() ) {
+              cube.material.opacity = 0.5
+              cube.material.transparent = true;
+              this.flag = true // 碰撞
+            } else {
+              cube.material.opacity = 1
+            }
+            cube.material.needsUpdate = true;
+          }
         }
 
         if(this.flag) {
@@ -158,7 +181,7 @@ const Page = () => {
 
         // 更新
         this.orbitControls.update()
-        this.scene.add(boxHelper)
+
         this.renderer.render(this.scene, this.camera)
         window.requestAnimationFrame(()=> this.tick())
       },

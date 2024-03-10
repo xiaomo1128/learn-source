@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { DragControls } from 'three/examples/jsm/controls/DragControls';
 import * as dat from 'dat.gui';
 import gsap from 'gsap';
 
@@ -23,11 +22,6 @@ const Page = () => {
 
         // 创建3D场景对象
         const scene = new THREE.Scene();
-        const ambient = new THREE.AmbientLight(0xffffff,) // 环境光
-        const directional = new THREE.DirectionalLight(0xffffff,) // 方向光
-        directional.position.set(5, 5, 2)
-
-        scene.add(ambient, directional)
         this.scene = scene
       },
       // 创建立方体对象
@@ -38,42 +32,40 @@ const Page = () => {
 
         const box = new THREE.Mesh(
           new THREE.BoxGeometry(4, 4, 4),
-          new THREE.MeshLambertMaterial({
+          new THREE.MeshBasicMaterial({
             map: texture,
           })
         )
-        box.position.y = 1;
-        box.rotation.y = Math.PI / 4;
-
-        const cube = new THREE.Mesh(
-          new THREE.BoxGeometry(4, 4, 4),
-          new THREE.MeshLambertMaterial({
-            color: 0x1890ff,
-            map: texture,
-          })
-        )
-        cube.position.y = 1
-        cube.position.x = -5
+        box.position.y = 10;
 
         // 地板
         const groud = new THREE.Mesh(
           new THREE.PlaneGeometry(100, 100), 
-          new THREE.MeshLambertMaterial({
+          new THREE.MeshBasicMaterial({
             color: 0xdce776,
           })
         )
         groud.rotation.x = -Math.PI / 2;
         groud.position.y = -1.02;
+        gsap.to(
+          box.position, // 变化的属性
+          {
+            duration: 1, // 动画时常
+            repeat: -1, // 动画循环次数，-1是无限循环
+            x: 6, // 移动到这个位置
+            yoyo: true, // 往复运动
+            ease: 'none', // 匀速运动
+          }
+        )
 
         this.box = box;
-        this.cube = cube;
-        this.scene.add(box, groud, cube);
+        this.scene.add(box, groud);
       },
       createCamera () {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000)
         // 设置相机位置
-        watcherCamera.position.set(4, 14, 10)
+        watcherCamera.position.set(4, 8, 20)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -111,54 +103,36 @@ const Page = () => {
         this.renderer = renderer
       },
       controls () {
-        // 拖拽控制器
-        const dragControls = new DragControls([this.box], this.camera, this.canvas)
-
         // 创建轨道控制器
         const orbitControls = new OrbitControls(this.camera, this.canvas)
         // 开启惯性
         orbitControls.enableDamping = true;
         this.orbitControls = orbitControls
-
-        // 拖拽与轨道同时开启有冲突
-        dragControls.addEventListener('dragstart', e => {
-          orbitControls.enabled = false
-        })
-        dragControls.addEventListener('dragend', e => {
-          orbitControls.enabled = true
-        })
       },
+      // 射线
+      raycaster: new THREE.Raycaster(),
       pointer: new THREE.Vector2(-1000, -1000), // 参数给大，防止自动触发Raycaster射线
-      flag: false, // 是否碰撞
-      speedX: 0.05, // 运动速度
-      box3: new THREE.Box3(), // 包围盒
+      currentIntersect: null, // 当前交互对象
       tick () {
-        this.box.geometry.computeBoundingBox()
-        // 包围盒复制 物体在世界坐标变更后的位置
-        this.box3.copy(this.box.geometry.boundingBox).applyMatrix4(this.box.matrixWorld) 
+        // 更新射线
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+        // 获取场景中，所有与鼠标交互的物体
+        const objects = this.raycaster.intersectObjects([this.box])
 
-        // 包围盒辅助线
-        const boxHelper = new THREE.Box3Helper(this.box3, 0xff00ff)
-
-        const cubeB = new THREE.Box3().setFromObject(this.cube)
-
-        if (this.box3.intersectsBox(cubeB)) {
-          this.flag = true
-        }
-
-        if(this.flag) {
-          this.box.position.x += this.speedX;
+        const target = objects[0]?.object; // 与鼠标交互的第一个物体对象
+        if (target) {
+          if (!this.currentIntersect) {
+            this.currentIntersect = target;
+          } 
         } else {
-          this.box.position.x -= this.speedX;
-        }
-
-        if(this.box.position.x >= 5) {
-          this.flag = false
+          if (this.currentIntersect) {
+            this.currentIntersect = null;
+          }
         }
 
         // 更新
         this.orbitControls.update()
-        this.scene.add(boxHelper)
+
         this.renderer.render(this.scene, this.camera)
         window.requestAnimationFrame(()=> this.tick())
       },
@@ -180,6 +154,38 @@ const Page = () => {
         this.datGui()
         this.tick()
         this.fitView()
+
+        // 先触发pointer的更新，点击时，物体的透明度就会变化了
+        window.addEventListener('mousemove', (e) => {
+          this.pointer.x = e.clientX / window.innerWidth * 2 - 1; // -1 ~ 1
+          this.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1; // -1 ~ 1
+        })
+
+        // click 事件未生效，是由于 AxesHelper 对象做了更新拦截
+        window.addEventListener('pointerdown', (e) => {
+          // this.pointer.x = e.clientX / window.innerWidth * 2 - 1; // -1 ~ 1
+          // this.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1; // -1 ~ 1
+
+          if (this.currentIntersect) {
+            const box = this.currentIntersect
+            const boxCopy = new THREE.Mesh(
+              new THREE.BoxGeometry(4, 4, 4),
+              new THREE.MeshBasicMaterial({
+                map: box.material.map,
+              })
+            )
+
+            boxCopy.position.copy(box.position)
+            gsap.to(
+              boxCopy.position, {
+                duration: 1, // 动画时常
+                y: 1,
+              }
+            )
+
+            this.scene.add(boxCopy)
+          }
+        })
       }
     }
 
