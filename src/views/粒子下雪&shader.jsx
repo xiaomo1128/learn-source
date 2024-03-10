@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
-import vertShader from './star-shader/shader.vert';
-import fragShader from './star-shader/shader.frag';
+import vertShader from './snowflack-shader/shader.vert';
+import fragShader from './snowflack-shader/shader.frag';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as dat from 'dat.gui';
 
@@ -23,37 +23,56 @@ const Page = () => {
 
         // 创建3D场景对象
         const scene = new THREE.Scene();
-
-        // 添加雾，使远处物体显得模糊
-        // scene.fog = new THREE.Fog(0x000000, 0, 20);
         this.scene = scene
       },
-      // 生成两数之间的随机数
-      random: (min, max) => min + Math.random() * (max - min),
       createGeometry (numbers) {
         const geometry = new THREE.BufferGeometry()
         const position = new Float32Array(numbers * 3)
+        const colors = new Float32Array(numbers * 3)
+        const size = new Float32Array(numbers) 
+        const opacity = new Float32Array(numbers)
+        const speed = new Float32Array(numbers) // 每个粒子运动的初始速度
+        const delta = new Float32Array(numbers)
 
         // 创建顶点
         for ( let i = 0; i < numbers; i++) { 
-          position[i * 3] = Math.sin(i);
-          position[i * 3 + 1] = Math.cos(i);
-          position[i * 3 + 2] = this.random(-50, 0); //随机数
+          const x = Math.random()
+          const y = Math.random()
+          const z = Math.random()
+
+          position[i * 3] = x * 60 - 30;
+          position[i * 3 + 1] = y * 60 - 30;
+          position[i * 3 + 2] = z * 60 - 30;
+
+          colors[i * 3] = x;
+          colors[i * 3 + 1] = y;
+          colors[i * 3 + 2] = z;
+
+          size[i] * Math.random() // 随机的大小
+          opacity[i] * Math.random() // 透明度随机
+          speed[i] * Math.random() // 初始速度随机
+          delta[i] * Math.random() // 初始速度随机
         }
         geometry.setAttribute('position', new THREE.BufferAttribute(position, 3))
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+        geometry.setAttribute('size', new THREE.BufferAttribute(size, 1))
+        // 透明度的修改是自定义属性，默认属性无法修改
+        geometry.setAttribute('alpha', new THREE.BufferAttribute(opacity, 1)) 
+        geometry.setAttribute('speed', new THREE.BufferAttribute(speed, 1)) 
+        geometry.setAttribute('delta', new THREE.BufferAttribute(delta, 1)) 
         geometry.computeBoundingSphere()
 
         return geometry;
       },
       // 创建立方体对象
       createObjects (numbers = 10000) {
-        // 星星纹理
-        const texture = new THREE.TextureLoader().load('/src/assets/textures/star.png')
+        // 雪花纹理
+        const texture = new THREE.TextureLoader().load('/src/assets/textures/snowflake.png')
         // webgl默认雪花粒子都是相同的层级，会互相遮挡，出现小黑块
 
         const material = new THREE.ShaderMaterial({ 
           // const material = new THREE.PointsMaterial({ 
-          // size: 0.2,
+          // size: 0.5,
           vertexColors: true, // 是否使用顶点着色，默认是false
           vertexShader: vertShader,
           fragmentShader: fragShader,
@@ -65,19 +84,15 @@ const Page = () => {
           blending: THREE.AdditiveBlending, // 混合模式，Material对象中属性
           // 通过uniforms，向shader传递数据
           uniforms: {
-            color: {
-              value: new THREE.Color(0xffffff)
-            },
             pointTexture: {
-              value: texture
-            },
-            fogColor: { value: new THREE.Color(0x000000) },
-            fogNear: { value: 0 },
-            fogFar: { value: 20 },
+              value: texture,
+            }
           },
         })
 
         const point = new THREE.Points(this.createGeometry(numbers), material)
+        // 问题：出现雪花纹理都在box的前面，是由于关闭深度测试depthTest导致的
+        // const box = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 1))
 
         this.scene.add(point, )
         this.point = point
@@ -90,7 +105,7 @@ const Page = () => {
         // 透视相机 第二个相机
         const watcherCamera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000)
         // 设置相机位置
-        watcherCamera.position.set(0, 0, 0)
+        watcherCamera.position.set(5, 5, 80)
         // 设置相机朝向
         watcherCamera.lookAt(this.scene.position)
         // 将相机添加到场景中
@@ -107,7 +122,7 @@ const Page = () => {
           _this.point.material.needsUpdate = true
         })
 
-        gui.add(_this.params, 'particles', 1, 5000, 1).name('粒子数量').onChange(val => {
+        gui.add(_this.params, 'particles', 1, 50000, 1).name('粒子数量').onChange(val => {
           // 先销毁旧的粒子
           const point = _this.scene.children.find(child => child.isPoints)
 
@@ -152,22 +167,25 @@ const Page = () => {
       },
       clock: new THREE.Clock(),
       tick () {
-        const point = this.scene.children.find(x => x.type === 'Points')
+        const point = this.scene.children.find(x => x.isPoints)
         const { attributes: attrs } = point.geometry;
-        
-        point.rotation.z += 0.01;
+        const position = attrs.position.array;
+        const speed = attrs.speed.array;
+        const delta = attrs.speed.array;
 
-        for( let i = 0; i < attrs.position.array.length; i++ ) {
-          if (i % 3 === 2) {
-            // 判断当前粒子是否在相机后面
-            const z = attrs.position.array[i];
-            const distance = z - this.camera.position.z;
-            if ( distance >= 0) {
-              attrs.position.array[i] = -50 + Math.random() * 2;
-            }
+        for ( let i = 0; i < position.length; i++ ) {
+          // 更新x坐标
+          position[i * 3] += speed[i] / 30;
+          // 更新y坐标
+          position[i * 3 + 1] -= speed[i] / 20 / delta[i] + delta[i] / 40;
 
-            // 移动粒子z轴坐标
-            attrs.position.array[i] += 0.05;
+          if ( position[i * 3] >= 50 ) {
+            position[i * 3] = Math.random() * 60 - 40;
+            position[i * 3 + 1] = Math.random() * 60 + 30;
+          }
+
+          if ( position[i * 3 + 1] <= -30 ) {
+            position[i * 3 + 1] = Math.random() * 60 + 60;
           }
         }
         attrs.position.needsUpdate = true;
